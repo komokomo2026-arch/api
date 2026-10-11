@@ -1,0 +1,1770 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ekambani POS</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    /* ════════ RESET & BASE ════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f1f5f9; color: #1e293b; }
+
+    input, select, button, textarea {
+      width: 100%; padding: 10px 12px; margin-top: 6px;
+      border-radius: 8px; border: 1px solid #e2e8f0;
+      font-size: 14px; font-family: inherit; box-sizing: border-box;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+    }
+    button {
+      border: none; background: #2563eb; color: white;
+      font-weight: 600; cursor: pointer; transition: background .2s, transform .1s, opacity .2s;
+    }
+    button:hover:not(:disabled) { background: #1d4ed8; }
+    button:active:not(:disabled) { transform: scale(0.98); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .card { background: white; padding: 16px; border-radius: 14px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+    .flex { display: flex; gap: 10px; margin-bottom: 10px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 14px; }
+    .stat-card { color: white; padding: 15px; border-radius: 12px; text-align: center; font-size: 13px; }
+    .blue  { background: linear-gradient(135deg,#2563eb,#1d4ed8); }
+    .green { background: linear-gradient(135deg,#16a34a,#15803d); }
+    .orange{ background: linear-gradient(135deg,#ea580c,#c2410c); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+    th, td { padding: 9px 8px; border-bottom: 1px solid #f1f5f9; text-align: left; }
+    th { background: #f8fafc; font-weight: 600; color: #475569; }
+    tr:hover td { background: #f8fafc; }
+
+    .view { display: none; }
+    .view.active { display: block; }
+    .low-stock { color: #dc2626 !important; font-weight: bold; }
+    .action-icons i { cursor: pointer; margin-right: 8px; font-size: 13px; }
+    .btn-remove { color: #ef4444; cursor: pointer; }
+    #repDownloadBtn { display: none; background: #1e293b; margin-top: 8px; }
+    .rep-section-title { font-weight: 700; margin: 14px 0 4px; font-size: 13px; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+    .select2-container { margin-top: 6px !important; }
+    label.lbl { font-size: 12px; font-weight: 600; color: #334155; display: block; margin-top: 10px; }
+
+    /* Incremental-loading button (large data support) */
+    .load-more-btn { width: auto; display: block; margin: 12px auto 0; padding: 8px 20px; background: #64748b; font-size: 13px; }
+    .load-more-btn:hover:not(:disabled) { background: #475569; }
+
+    /* ════════ LAYOUT — MOBILE ════════ */
+    #appShell { display: block; }
+    .header {
+      background: #0f172a; color: white; padding: 14px 16px;
+      font-size: 18px; font-weight: 700; position: sticky; top: 0; z-index: 900;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .header-title { text-align: center; letter-spacing: .5px; }
+    .main-content { padding: 14px; padding-bottom: 90px; max-width: 1000px; margin: 0 auto; }
+    .sidebar { display: none; }
+    .desktop-topbar { display: none; }
+
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: white; display: flex; justify-content: space-around;
+      padding: 8px 0 10px; border-top: 1px solid #e2e8f0; z-index: 800;
+    }
+    .nav-item { text-align: center; cursor: pointer; color: #94a3b8; font-size: 10px; flex: 1; transition: color .15s; }
+    .nav-item i { display: block; font-size: 20px; margin-bottom: 2px; }
+    .nav-item.active, .nav-item.active i { color: #2563eb; }
+
+    /* ════════ LAYOUT — TABLET / DESKTOP ════════ */
+    @media (min-width: 768px) {
+      html, body { height: 100%; overflow: hidden; }
+      #appShell { display: flex; flex-direction: row; width: 100vw; height: 100vh; overflow: hidden; }
+      .header { display: none; }
+      .sidebar {
+        display: flex; flex-direction: column;
+        width: 220px; min-width: 220px; flex-shrink: 0;
+        background: #0f172a; color: white; height: 100vh; z-index: 800;
+      }
+      .sidebar-logo { padding: 20px 18px 16px; font-size: 15px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.08); letter-spacing: .4px; flex-shrink: 0; }
+      .sidebar-logo span { color: #38bdf8; }
+      .sidebar-nav { flex: 1; padding: 10px 0; overflow-y: auto; }
+      .sidebar-nav-item {
+        display: flex; align-items: center; gap: 12px;
+        padding: 13px 20px; color: #94a3b8;
+        cursor: pointer; font-size: 14px; font-weight: 500;
+        transition: background .15s, color .15s;
+        border-left: 3px solid transparent; white-space: nowrap;
+      }
+      .sidebar-nav-item i { font-size: 16px; width: 18px; text-align: center; }
+      .sidebar-nav-item:hover { background: rgba(255,255,255,0.05); color: white; }
+      .sidebar-nav-item.active { background: rgba(37,99,235,0.18); color: #60a5fa; border-left-color: #2563eb; }
+      .sidebar-footer { padding: 14px 18px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 11px; color: #64748b; flex-shrink: 0; }
+      .main-wrapper { flex: 1; min-width: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; background: #f1f5f9; }
+      .desktop-topbar { display: flex; align-items: center; justify-content: flex-end; padding: 12px 24px; background: white; border-bottom: 1px solid #e2e8f0; font-size: 13px; color: #64748b; flex-shrink: 0; }
+      .main-content { flex: 1; padding: 24px; padding-bottom: 24px; max-width: none; width: 100%; margin: 0; }
+      .bottom-nav { display: none; }
+      .grid-3 { gap: 16px; }
+      .stat-card { padding: 22px 16px; font-size: 14px; }
+      .stat-card strong { font-size: 18px; }
+      table { font-size: 13px; }
+      th, td { padding: 10px 12px; }
+      .card { padding: 22px 24px; border-radius: 16px; }
+      .flex { gap: 14px; }
+      #reportView .card:first-child .flex,
+      #homeView .card:first-child .flex { max-width: 480px; }
+    }
+    @media (min-width: 1280px) {
+      .sidebar { width: 240px; min-width: 240px; }
+      #salesView { display: none; }
+      #salesView.active { display: grid; grid-template-columns: 420px 1fr; gap: 20px; align-items: start; }
+      #homeView .card:last-child { grid-column: 1 / -1; }
+    }
+
+    /* ════════ MORE DROPDOWN ════════ */
+    #moreBackdrop { display: none; position: fixed; inset: 0; z-index: 1900; background: transparent; }
+    #moreBackdrop.open { display: block; }
+    #moreMenu {
+      display: none; position: fixed; z-index: 1950; min-width: 220px;
+      background: white; border-radius: 12px; padding: 6px 0;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.25); border: 1px solid #e2e8f0;
+    }
+    #moreMenu.open { display: block; }
+    .more-item { display: flex; align-items: center; gap: 12px; padding: 12px 18px; font-size: 14px; color: #1e293b; cursor: pointer; font-weight: 500; }
+    .more-item i { width: 18px; text-align: center; color: #2563eb; font-size: 15px; }
+    .more-item:hover { background: #f1f5f9; }
+    .more-item.static { cursor: default; color: #64748b; font-size: 12px; border-top: 1px solid #f1f5f9; margin-top: 4px; }
+    .more-item.static:hover { background: transparent; }
+    .more-item.static i { color: #94a3b8; }
+
+    /* ════════ MODALS ════════ */
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; overflow-y: auto; }
+    .modal-content { background: white; width: 90%; max-width: 460px; margin: 5% auto; padding: 22px; border-radius: 14px; }
+    .modal-content h3 { margin-bottom: 10px; }
+    .modal-content label { font-size: 12px; font-weight: 600; color: #334155; display: block; margin-top: 10px; }
+
+    /* ════════ TOAST ════════ */
+    #toastContainer { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 9990; display: flex; flex-direction: column-reverse; align-items: center; gap: 8px; pointer-events: none; }
+    @media (min-width: 768px) { #toastContainer { bottom: 20px; } }
+    .toast { background: #1e293b; color: white; padding: 11px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; box-shadow: 0 4px 16px rgba(0,0,0,0.25); display: flex; align-items: center; gap: 8px; animation: slideUp .3s ease; min-width: 220px; max-width: 340px; pointer-events: auto; }
+    .toast.success { background: #15803d; }
+    .toast.error   { background: #dc2626; }
+    .toast.warning { background: #d97706; }
+    @keyframes slideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes slideDown { to { opacity:0; transform:translateY(16px); } }
+    .toast.hiding { animation: slideDown .3s ease forwards; }
+
+    /* ════════ VIEW ITEM ════════ */
+    .view-item-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+    .view-item-row:last-child { border-bottom: none; }
+    .view-item-label { color: #64748b; font-weight: 600; font-size: 12px; }
+    .view-item-value { color: #1e293b; font-weight: 500; text-align: right; word-break: break-all; }
+    .view-item-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+    .badge-ok  { background: #dcfce7; color: #15803d; }
+    .badge-low { background: #fef2f2; color: #dc2626; }
+
+    /* ════════ SETTINGS / INFO PAGES ════════ */
+    .page-title { font-size: 18px; color: #0f172a; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; }
+    .page-title i { color: #2563eb; }
+    .page-sub { color: #64748b; font-size: 13px; margin-bottom: 14px; }
+    .info-p { font-size: 14px; line-height: 1.7; color: #334155; margin-bottom: 12px; }
+    .info-h { font-size: 14px; font-weight: 700; color: #0f172a; margin: 18px 0 6px; }
+    .info-list { margin: 0 0 12px 20px; font-size: 14px; line-height: 1.8; color: #334155; }
+    .wa-btn { background: #16a34a; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px; font-size: 15px; border-radius: 10px; }
+    .wa-btn:hover:not(:disabled) { background: #15803d; }
+    .up-hero { background: linear-gradient(135deg,#0f172a,#1e3a5f); color: white; border-radius: 14px; padding: 22px 18px; margin-bottom: 16px; }
+    .up-hero h3 { font-size: 20px; margin-bottom: 6px; }
+    .up-hero p { font-size: 13px; color: #cbd5e1; line-height: 1.6; }
+    .up-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .up-feat { display: flex; align-items: flex-start; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; font-size: 13px; color: #334155; }
+    .up-feat i { color: #059669; font-size: 16px; margin-top: 2px; }
+    .up-feat b { display: block; color: #0f172a; margin-bottom: 2px; }
+
+    /* ════════ GROUPED SALES ════════ */
+    .grouped-sales-block { border: 1px solid #f1f5f9; border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
+    .grouped-sales-header { background: #f8fafc; padding: 10px 14px; border-bottom: 1px solid #f1f5f9; }
+    .grouped-sales-header strong { font-size: 13px; color: #0f172a; }
+    .grouped-sales-block table { margin-top: 0; }
+    .grouped-sales-block th, .grouped-sales-block td { font-size: 11px; }
+    .grouped-date-block { margin-bottom: 18px; }
+    .grouped-date-header {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+      gap: 6px 16px; padding: 10px 14px; border-radius: 8px; background: #f0fdf4; margin-bottom: 8px;
+      border: 1px solid #bbf7d0;
+    }
+    .grouped-date-title { color: #15803d; font-weight: 700; font-size: 14px; }
+    .grouped-date-stats { display: flex; gap: 14px; font-size: 12px; font-weight: 700; flex-wrap: wrap; }
+    .grouped-date-sales { color: #ca8a04; }
+    .grouped-date-profit { color: #000000; }
+  </style>
+</head>
+<body>
+
+<div id="toastContainer"></div>
+
+<!-- ══════════ MAIN APP SHELL ══════════ -->
+<div id="appShell">
+
+  <!-- Sidebar (tablet/desktop) -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">⬡ <span id="sidebarBizName">Ekambani</span></div>
+    <div class="sidebar-nav" id="sidebarNav">
+      <div class="sidebar-nav-item active" data-view="homeView"     onclick="showView('homeView')">     <i class="fas fa-home"></i> Home</div>
+      <div class="sidebar-nav-item"        data-view="purchaseView" onclick="showView('purchaseView')"> <i class="fas fa-box"></i> Purchase</div>
+      <div class="sidebar-nav-item"        data-view="salesView"    onclick="showView('salesView')">    <i class="fas fa-cart-shopping"></i> Sales</div>
+      <div class="sidebar-nav-item"        data-view="reportView"   onclick="showView('reportView')">   <i class="fas fa-file-invoice"></i> Reports</div>
+      <div class="sidebar-nav-item"        data-view="more"         onclick="toggleMore(this)">         <i class="fas fa-ellipsis"></i> More</div>
+    </div>
+    <div class="sidebar-footer">Data is stored on this device</div>
+  </div>
+
+  <!-- Main wrapper -->
+  <div class="main-wrapper">
+    <div class="header">
+      <div class="header-title" id="mobileHeaderTitle">EKAMBANI</div>
+    </div>
+    <div class="desktop-topbar" id="desktopTopbar">
+      <span id="desktopViewTitle" style="font-weight:600;color:#1e293b;margin-right:auto;font-size:15px">Home</span>
+      <span style="font-size:12px;margin-left:12px">
+        <i class="fas fa-circle" style="color:#22c55e;font-size:8px;margin-right:4px"></i>
+        Ready
+      </span>
+    </div>
+
+    <div class="main-content">
+
+      <!-- HOME -->
+      <div id="homeView" class="view active">
+        <div class="card">
+          <div class="flex">
+            <select id="dashMonth" onchange="runDashReport()"></select>
+            <select id="dashYear"  onchange="runDashReport()"></select>
+          </div>
+        </div>
+        <div id="dashStatsWrapper">
+          <div class="grid-3">
+            <div class="stat-card blue">Sales<br><strong>KSH <span id="dashSales">0</span></strong></div>
+            <div class="stat-card green">Profit<br><strong>KSH <span id="dashProfit">0</span></strong></div>
+            <div class="stat-card orange">Stock Val<br><strong>KSH <span id="dashStock">0</span></strong></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:10px">Quick Actions</h3>
+          <button onclick="showView('salesView')">
+            <i class="fas fa-plus"></i> New Sale
+          </button>
+          <h3 style="margin-top:20px;margin-bottom:6px">Filtered Sales Summary</h3>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr><th>Item</th><th>Selling Price</th><th class="profit-col">Profit</th><th>Total</th></tr></thead>
+              <tbody id="dashSummaryTable"></tbody>
+              <tfoot id="dashSummaryFoot" style="font-weight:bold;background:#f8fafc;"></tfoot>
+            </table>
+          </div>
+          <div id="dashMoreWrap"></div>
+        </div>
+        <div class="card" id="groupedSalesCard">
+          <h3 style="margin-bottom:2px">Sales by Date &amp; Person</h3>
+          <p style="color:#64748b;font-size:12px;margin-bottom:10px">Grouped by date, then by who made the sale, with daily profit tracking.</p>
+          <div id="groupedSalesContainer"></div>
+          <div id="groupedMoreWrap"></div>
+        </div>
+      </div>
+
+      <!-- PURCHASE -->
+      <div id="purchaseView" class="view">
+        <div class="card">
+          <button onclick="openModal()"><i class="fas fa-plus"></i> Add New Item</button>
+          <input type="text" id="purSearch" placeholder="Search Item or Category..." onkeyup="filterPurchase()" style="margin-top:12px">
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr><th>Date</th><th>Item</th><th>Cost</th><th>Stock</th><th>Action</th></tr></thead>
+              <tbody id="purchaseTable"></tbody>
+            </table>
+          </div>
+          <div id="purMoreWrap"></div>
+        </div>
+      </div>
+
+      <!-- SALES -->
+      <div id="salesView" class="view">
+        <div class="card">
+          <h3 id="salesFormTitle" style="margin-bottom:10px">New Sale</h3>
+          <input type="date" id="saleDate">
+          <select id="saleItem" style="width:100%;margin-top:6px;"><option value="">Select Item...</option></select>
+          <div class="flex" style="margin-top:0">
+            <input type="number" id="saleQty"   placeholder="Qty"   min="1">
+            <input type="number" id="salePrice" placeholder="Price" min="0">
+          </div>
+          <button onclick="addToCart()" style="background:#64748b"><i class="fas fa-cart-plus"></i> Add to Cart</button>
+          <div style="margin-top:14px;border-top:1px solid #f1f5f9;padding-top:10px">
+            <strong>Cart Items:</strong>
+            <table>
+              <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th><th></th></tr></thead>
+              <tbody id="cartTable"></tbody>
+            </table>
+            <h3 style="text-align:right;margin-top:8px">Total: KSH <span id="grandTotal">0</span></h3>
+          </div>
+          <div class="flex">
+            <input type="text" id="custName" placeholder="Customer Name">
+            <button onclick="$('#moreModal').show()" style="width:80px;background:#64748b">More</button>
+          </div>
+          <input type="text" id="custPhone" placeholder="Phone">
+          <button onclick="completeSale()" id="btnCompleteSale" style="margin-top:12px">
+            <i class="fas fa-check-circle"></i> Complete Sale &amp; Print
+          </button>
+          <button onclick="resetSalesForm()" id="btnCancelEdit" style="margin-top:6px;background:#94a3b8;display:none;">
+            <i class="fas fa-times"></i> Cancel Edit
+          </button>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:8px">Sales Records</h3>
+          <input type="text" id="saleSearch" placeholder="Search Invoice, Item, Customer..." onkeyup="filterSales()">
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr><th>Date</th><th>Invoice</th><th>Items</th><th>Total</th><th>Customer</th><th>Phone</th><th>Method</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="salesTableBody"></tbody>
+            </table>
+          </div>
+          <div id="salesMoreWrap"></div>
+        </div>
+      </div>
+
+      <!-- REPORTS -->
+      <div id="reportView" class="view">
+        <div class="card">
+          <div class="flex">
+            <select id="repMonth"></select>
+            <select id="repYear"></select>
+          </div>
+          <select id="repItem" style="width:100%;margin-top:6px;"><option value="__all__" selected>All Items</option></select>
+          <select id="repPayFilter" style="margin-top:6px;">
+            <option value="">All Payment Methods</option>
+            <option value="KSH">KSH</option>
+            <option value="M-Pesa">M-Pesa</option>
+            <option value="Till">Till</option>
+          </select>
+          <div class="flex" style="margin-top:10px">
+            <button id="btnRunReport" onclick="runReport()"><i class="fas fa-chart-bar"></i> Preview Report</button>
+            <button id="repDownloadBtn" onclick="downloadPDF()"><i class="fas fa-download"></i> Download PDF</button>
+          </div>
+        </div>
+        <div id="reportPrintArea" class="card">
+          <div id="reportHeader" style="text-align:center;display:none;"><h2>EKAMBANI INVENTORY REPORT</h2><hr></div>
+          <h4>Summary</h4>
+          <p style="margin-top:6px">Total Sales: KSH <span id="repTotalSales">0</span></p>
+          <p>Total Profit: KSH <span id="repTotalProfit">0</span></p>
+          <p>Total Purchases Value: KSH <span id="repTotalPurchases">0</span></p>
+          <div class="rep-section-title">Sales Transactions</div>
+          <table id="repSalesTable">
+            <thead><tr><th>Date</th><th>Invoice</th><th>Item</th><th>Qty</th><th>Price</th><th>Total</th><th>Profit</th><th>Customer</th><th>Method</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div id="repSalesMore"></div>
+          <div class="rep-section-title">Purchases / Stock Updates</div>
+          <table id="repPurchaseTable">
+            <thead><tr><th>Date</th><th>Item</th><th>Category</th><th>Cost Price</th><th>Stock Qty</th><th>Stock Value</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div id="repPurMore"></div>
+        </div>
+      </div>
+
+      <!-- BUSINESS SETTINGS (More → Business Settings) -->
+      <div id="bizView" class="view">
+        <div class="card">
+          <h3 style="margin-bottom:10px">Business Settings</h3>
+          <label class="lbl" style="margin-top:0">Logo URL</label><input type="text" id="bizLogo" placeholder="https://...">
+          <label class="lbl">Business Name</label><input type="text" id="bizName" placeholder="Business Name">
+          <label class="lbl">Name (Sold by)</label><input type="text" id="bizSoldBy" placeholder="Your name — shown as who made the sale">
+          <label class="lbl">Phone</label><input type="text" id="bizPhone" placeholder="Phone">
+          <label class="lbl">Address</label><input type="text" id="bizAddr" placeholder="Address">
+          <label class="lbl">Description</label><textarea id="bizDesc" placeholder="Description" style="height:70px;resize:vertical;"></textarea>
+          <button id="btnSaveBiz" onclick="saveBizSettings()" style="margin-top:10px">
+            <i class="fas fa-save"></i> Save Settings
+          </button>
+        </div>
+      </div>
+
+      <!-- ABOUT US -->
+      <div id="aboutView" class="view">
+        <div class="card">
+          <div class="page-title"><i class="fas fa-circle-info"></i> About Us</div>
+          <p class="page-sub">Simple sales and stock management for your business.</p>
+          <p class="info-p">EKAMBANI POS helps businesses manage their daily sales and products in an easy and organized way.</p>
+          <div class="info-h">What you can do</div>
+          <ul class="info-list">
+            <li>Add and manage your products, with prices and stock levels</li>
+            <li>Record sales quickly by searching for an item</li>
+            <li>Print invoices and keep track of who made each sale</li>
+            <li>See daily sales, profit and stock value on your Home page</li>
+            <li>Create reports by month, year, item or payment method</li>
+          </ul>
+          <p class="info-p">Your information is saved on your own device, so the app is quick and simple to use. We built EKAMBANI POS to make everyday record-keeping less stressful for small and growing businesses.</p>
+        </div>
+      </div>
+
+      <!-- PRIVACY POLICY -->
+      <div id="privacyView" class="view">
+        <div class="card">
+          <div class="page-title"><i class="fas fa-shield-halved"></i> Privacy Policy</div>
+          <p class="page-sub">Short, clear and honest.</p>
+          <div class="info-h">Your data stays with you</div>
+          <p class="info-p">EKAMBANI POS saves your products, sales, customer details, receipts and business settings on your own device, inside your browser's local storage (IndexedDB). We do not upload this information to a server.</p>
+          <div class="info-h">What is stored</div>
+          <ul class="info-list">
+            <li>Product details, prices and stock</li>
+            <li>Sales records, including customer name and phone number if you type them in</li>
+            <li>Your business name, contact details and the name shown as "Sold by"</li>
+          </ul>
+          <div class="info-h">You are in control</div>
+          <p class="info-p">You can view, edit or delete your records inside the app at any time. Clearing your browser's site data will also remove everything stored by the app on that device, so keep that in mind before you do it.</p>
+          <div class="info-h">Contact information</div>
+          <p class="info-p">If you choose to contact us or request an upgrade through WhatsApp, the details you enter (such as your business name and phone number) are shared only through that WhatsApp message, and only because you sent them.</p>
+          <div class="info-h">No unnecessary collection</div>
+          <p class="info-p">We do not ask you to create an account and we do not collect personal information we do not need. The app does not use your camera.</p>
+          <div class="info-h">Updates</div>
+          <p class="info-p">We may update this policy from time to time. Any changes will appear on this page.</p>
+        </div>
+      </div>
+
+      <!-- CONTACT US -->
+      <div id="contactView" class="view">
+        <div class="card">
+          <div class="page-title"><i class="fas fa-headset"></i> Contact Us</div>
+          <p class="page-sub">Questions, help or feedback? We would love to hear from you.</p>
+          <p class="info-p">Tap the button below to chat with us directly on WhatsApp.</p>
+          <button class="wa-btn" onclick="contactWhatsApp()"><i class="fab fa-whatsapp" style="font-size:22px"></i> WhatsApp</button>
+        </div>
+      </div>
+
+      <!-- UPGRADE -->
+      <div id="upgradeView" class="view">
+        <div class="card">
+          <div class="up-hero">
+            <h3><i class="fas fa-rocket" style="margin-right:8px;color:#38bdf8"></i>Upgrade to POS + Finance</h3>
+            <p>The paid version gives you the complete POS and Finance System, built for businesses that want more control and more peace of mind.</p>
+          </div>
+          <div class="up-grid">
+            <div class="up-feat"><i class="fas fa-user-shield"></i><div><b>Admin control</b>Stay in charge of your business.</div></div>
+            <div class="up-feat"><i class="fas fa-users-gear"></i><div><b>Roles</b>Give each person the right level of access.</div></div>
+            <div class="up-feat"><i class="fas fa-user-tag"></i><div><b>Sales by</b>See exactly who made each sale.</div></div>
+            <div class="up-feat"><i class="fas fa-right-to-bracket"></i><div><b>Login</b>Secure sign-in for you and your team.</div></div>
+            <div class="up-feat"><i class="fas fa-lock"></i><div><b>Data protection</b>Safer, better-managed business data.</div></div>
+            <div class="up-feat"><i class="fas fa-chart-pie"></i><div><b>Finance system</b>Track income and expenses together with your POS.</div></div>
+            <div class="up-feat"><i class="fas fa-ban"></i><div><b>No ads</b>A clean, distraction-free experience.</div></div>
+            <div class="up-feat"><i class="fas fa-star"></i><div><b>More advanced features</b>And more tools as we keep growing.</div></div>
+          </div>
+          <h3 style="margin-bottom:4px">Ready to upgrade?</h3>
+          <p class="page-sub" style="margin-bottom:6px">Fill in your details and we will continue on WhatsApp.</p>
+          <label class="lbl" style="margin-top:0">Business Name</label>
+          <input type="text" id="upBizName" placeholder="e.g. ABC Electronics Shop">
+          <label class="lbl">Phone Number</label>
+          <input type="tel" id="upPhone" placeholder="e.g. 07XX XXX XXX">
+          <button class="wa-btn" style="margin-top:14px" onclick="upgradeWhatsApp()"><i class="fab fa-whatsapp" style="font-size:22px"></i> WhatsApp Direct</button>
+        </div>
+      </div>
+
+    </div><!-- /main-content -->
+  </div><!-- /main-wrapper -->
+
+  <!-- Mobile bottom nav -->
+  <div class="bottom-nav" id="mainBottomNav">
+    <div class="nav-item active" data-view="homeView"     onclick="showView('homeView')">     <i class="fas fa-home"></i>Home</div>
+    <div class="nav-item"        data-view="purchaseView" onclick="showView('purchaseView')"> <i class="fas fa-box"></i>Purchase</div>
+    <div class="nav-item"        data-view="salesView"    onclick="showView('salesView')">    <i class="fas fa-cart-shopping"></i>Sales</div>
+    <div class="nav-item"        data-view="reportView"   onclick="showView('reportView')">   <i class="fas fa-file-invoice"></i>Reports</div>
+    <div class="nav-item"        data-view="more"         onclick="toggleMore(this)">         <i class="fas fa-ellipsis"></i>More</div>
+  </div>
+</div><!-- /appShell -->
+
+<!-- ══════════ MORE DROPDOWN ══════════ -->
+<div id="moreBackdrop" onclick="closeMore()"></div>
+<div id="moreMenu">
+  <div class="more-item" onclick="moreGo('bizView')">      <i class="fas fa-store"></i> Business Settings</div>
+  <div class="more-item" onclick="moreGo('aboutView')">    <i class="fas fa-circle-info"></i> About Us</div>
+  <div class="more-item" onclick="moreGo('privacyView')">  <i class="fas fa-shield-halved"></i> Privacy Policy</div>
+  <div class="more-item" onclick="openVideoGuide()">       <i class="fab fa-youtube"></i> Video Guide</div>
+  <div class="more-item" onclick="moreGo('contactView')">  <i class="fas fa-headset"></i> Contact Us</div>
+  <div class="more-item" onclick="moreGo('upgradeView')">  <i class="fas fa-rocket"></i> Upgrade</div>
+  <div class="more-item static"><i class="fas fa-bolt"></i> Power by Ekambani</div>
+</div>
+
+<!-- ══════════ MODALS ══════════ -->
+<div class="modal" id="itemModal">
+  <div class="modal-content">
+    <h3 id="modalTitle">Item Details</h3>
+    <input type="hidden" id="itemId">
+    <label>Item Name *</label><input type="text" id="itemName" placeholder="Item Name">
+    <label>Category *</label><input type="text" id="itemCat" placeholder="Category">
+    <div class="flex">
+      <div style="flex:1"><label>Cost Price *</label><input type="number" id="costPrice" placeholder="Cost"></div>
+      <div style="flex:1"><label>Sell Price *</label><input type="number" id="sellPrice" placeholder="Sell"></div>
+    </div>
+    <div class="flex">
+      <div style="flex:1"><label>New Cost Price <span style="color:#64748b;font-weight:400;font-size:11px">(optional — replaces Cost Price)</span></label><input type="number" id="newCostPrice" placeholder="Enter to update cost price"></div>
+    </div>
+    <div class="flex">
+      <div style="flex:1"><label>Stock Qty *</label><input type="number" id="stockQty" placeholder="Stock"></div>
+      <div style="flex:1"><label>Min Stock</label><input type="number" id="minStock" placeholder="Min Stock"></div>
+    </div>
+    <button id="btnSaveItem" onclick="saveItem()" style="margin-top:10px"><i class="fas fa-save"></i> Save</button>
+    <button onclick="closeModal()" style="background:#ef4444;margin-top:6px"><i class="fas fa-times"></i> Cancel</button>
+  </div>
+</div>
+
+<div class="modal" id="moreModal">
+  <div class="modal-content">
+    <h3>IMEI &amp; Payment</h3>
+    <label>IMEI 1</label>
+    <input type="text" id="imei1" placeholder="IMEI 1">
+    <label>IMEI 2</label>
+    <input type="text" id="imei2" placeholder="IMEI 2">
+    <label>IMEI 3</label>
+    <input type="text" id="imei3" placeholder="IMEI 3">
+    <label>Payment Method</label>
+    <select id="payMethod">
+      <option value="KSH">KSH</option>
+      <option value="M-Pesa">M-Pesa</option>
+      <option value="Till">Till</option>
+    </select>
+    <button onclick="$('#moreModal').hide()" style="margin-top:10px">Done</button>
+  </div>
+</div>
+
+<div class="modal" id="viewItemModal">
+  <div class="modal-content">
+    <h3 style="margin-bottom:14px"><i class="fas fa-box-open" style="color:#2563eb;margin-right:8px"></i>Item Details</h3>
+    <div id="viewItemBody"></div>
+    <button onclick="$('#viewItemModal').hide()" style="background:#0f172a;margin-top:16px">
+      <i class="fas fa-times"></i> Close
+    </button>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   ★★★  CONFIGURATION — REPLACE THESE VALUES  ★★★
+   ═══════════════════════════════════════════════════════ */
+// Full YouTube link for the Video Guide (More → Video Guide)
+var VIDEO_GUIDE_URL = '';   // e.g. 'https://www.youtube.com/watch?v=XXXXXXXXXXX'
+
+// WhatsApp numbers: country code + number, digits only, no "+" or spaces
+var CONTACT_WHATSAPP_NUMBER = '';   // Contact Us button,  e.g. '254712345678'
+var UPGRADE_WHATSAPP_NUMBER = '';   // Upgrade form button, e.g. '254712345678'
+/* ═══════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════
+   STATE
+═══════════════════════════════════════ */
+let cart               = [];
+let editMode           = false;
+let currentEditInvoice = null;
+let bizSettings        = { key:'business', name:'', phone:'', address:'', desc:'', logo:'', soldBy:'' };
+
+const PAGE_ITEMS   = 50;   // rows per page — Purchase table
+const PAGE_INVOICE = 30;   // invoices per page — Sales Records
+const PAGE_REPORT  = 100;  // rows per page — Reports
+const PAGE_SELECT  = 30;   // results per page — searchable item dropdowns
+const PAGE_DASH    = 100;  // rows shown at once — Home summary
+const PAGE_DAYS    = 10;   // date blocks shown at once — Sales by Date & Person
+
+/* ═══════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════ */
+function toast(msg, type='success', duration=3200) {
+  const icons = { success:'fas fa-check-circle', error:'fas fa-circle-exclamation', warning:'fas fa-triangle-exclamation', info:'fas fa-info-circle' };
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.innerHTML = `<i class="${icons[type]||icons.info}"></i> ${esc(msg)}`;
+  document.getElementById('toastContainer').appendChild(t);
+  setTimeout(() => { t.classList.add('hiding'); setTimeout(() => t.remove(), 350); }, duration);
+}
+function btnLoad(id, text) {
+  const b = document.getElementById(id); if (!b) return;
+  b._originalHTML = b.innerHTML; b.disabled = true;
+  b.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${text}`;
+}
+function btnReset(id) {
+  const b = document.getElementById(id); if (!b) return;
+  b.disabled = false; if (b._originalHTML) b.innerHTML = b._originalHTML;
+}
+function esc(str) {
+  return (str === undefined || str === null ? '' : str).toString()
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function uuid() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+}
+function getLocalDateStr(d) {
+  d = d || new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function parseYMDLocal(s) {
+  if (!s) return null;
+  const p = String(s).split('-');
+  if (p.length !== 3) return null;
+  const y = parseInt(p[0],10), m = parseInt(p[1],10), d = parseInt(p[2],10);
+  if (isNaN(y)||isNaN(m)||isNaN(d)) return null;
+  return new Date(y, m-1, d);
+}
+function fmtDate(ts) { return ts ? new Date(ts).toLocaleDateString() : ''; }
+function debounce(fn, ms) {
+  let t = null;
+  return function() { const a = arguments, c = this; clearTimeout(t); t = setTimeout(function() { fn.apply(c, a); }, ms); };
+}
+function tokensOf(raw) {
+  raw = (raw || '').toLowerCase().trim();
+  return raw ? raw.split(/\s+/).filter(Boolean) : [];
+}
+function itemMatcher(tokens) {
+  if (!tokens.length) return null;
+  return function(v) {
+    const k = ((v.itemName || '') + ' ' + (v.category || '')).toLowerCase();
+    for (let i = 0; i < tokens.length; i++) if (k.indexOf(tokens[i]) === -1) return false;
+    return true;
+  };
+}
+// Date range (yyyy-MM-dd strings) for a month (0-11) or whole year (month = -1)
+function dateRange(month, year) {
+  year = parseInt(year, 10);
+  if (String(month) === '-1') return [year + '-01-01', year + '-12-31'];
+  const mm = String(parseInt(month, 10) + 1).padStart(2, '0');
+  return [year + '-' + mm + '-01', year + '-' + mm + '-31'];
+}
+function msRange(month, year) {
+  year = parseInt(year, 10);
+  if (String(month) === '-1') return [new Date(year, 0, 1).getTime(), new Date(year + 1, 0, 1).getTime() - 1];
+  const m = parseInt(month, 10);
+  return [new Date(year, m, 1).getTime(), new Date(year, m + 1, 1).getTime() - 1];
+}
+
+/* ═══════════════════════════════════════
+   INDEXEDDB LAYER
+   items     key: id            indexes: order [created,id] · dateId [date,id]
+   sales     key: id (one row per item sold)
+                                indexes: invoice · dateInv [date,invoice,id] · itemDate [itemId,date,id]
+   customers key: id            index:   phone
+   settings  key: key
+═══════════════════════════════════════ */
+const DB_NAME = 'EkambaniPOS';
+const DB_STORES = ['items', 'sales', 'customers', 'settings'];
+const EXPECTED_INDEXES = {
+  items: ['order', 'dateId'],
+  sales: ['invoice', 'dateInv', 'itemDate'],
+  customers: ['phone']
+};
+const OBSOLETE_INDEXES = { items: ['barcode', 'itemName'], sales: ['date', 'itemId'] };
+let db = null;               // the ONE shared connection for this tab (re-opened automatically if it closes)
+let _connecting = null;      // in-flight connect, so concurrent callers share a single open request
+let _dbBooted = false;       // true once the first connection succeeded
+let _reconnectTimer = null;
+let _blockedNoticeShown = false;
+const dbChannel = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('ekambani-pos-db') : null;
+
+function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
+
+function upgradeSchema(d, tx) {
+  const items = d.objectStoreNames.contains('items') ? tx.objectStore('items') : d.createObjectStore('items', { keyPath: 'id' });
+  const sales = d.objectStoreNames.contains('sales') ? tx.objectStore('sales') : d.createObjectStore('sales', { keyPath: 'id' });
+  const custs = d.objectStoreNames.contains('customers') ? tx.objectStore('customers') : d.createObjectStore('customers', { keyPath: 'id' });
+  if (!d.objectStoreNames.contains('settings')) d.createObjectStore('settings', { keyPath: 'key' });
+
+  OBSOLETE_INDEXES.items.forEach(function(n) { if (items.indexNames.contains(n)) items.deleteIndex(n); });
+  OBSOLETE_INDEXES.sales.forEach(function(n) { if (sales.indexNames.contains(n)) sales.deleteIndex(n); });
+  if (!items.indexNames.contains('order'))   items.createIndex('order',   ['created', 'id']);
+  if (!items.indexNames.contains('dateId'))  items.createIndex('dateId',  ['date', 'id']);
+  if (!sales.indexNames.contains('invoice')) sales.createIndex('invoice', 'invoice');
+  if (!sales.indexNames.contains('dateInv')) sales.createIndex('dateInv', ['date', 'invoice', 'id']);
+  if (!sales.indexNames.contains('itemDate')) sales.createIndex('itemDate', ['itemId', 'date', 'id']);
+  if (!custs.indexNames.contains('phone'))   custs.createIndex('phone', 'phone');
+
+  // Tidy existing items once: drop the removed barcode field, make sure created/date exist (needed by the indexes)
+  items.openCursor().onsuccess = function(e) {
+    const c = e.target.result; if (!c) return;
+    const v = c.value; let ch = false;
+    if ('barcode' in v) { delete v.barcode; ch = true; }
+    if (typeof v.date !== 'number')    { v.date = Number(v.date) || Number(v.created) || Date.now(); ch = true; }
+    if (typeof v.created !== 'number') { v.created = Number(v.created) || v.date; ch = true; }
+    if (ch) c.update(v);
+    c.continue();
+  };
+}
+
+function dropConnection() {
+  const d = db; db = null;
+  if (d) { try { d.close(); } catch(e) {} }
+}
+
+// Re-open lazily after this tab released its connection for another tab (upgrade / bfcache / close)
+function scheduleReconnect() {
+  if (!_dbBooted) return;
+  clearTimeout(_reconnectTimer);
+  _reconnectTimer = setTimeout(function() { if (!db) getDB().catch(function() {}); }, 400);
+}
+
+// "blocked" is NOT a failure: the open request stays queued and continues the moment the other
+// tab(s) release their connection. We only ask those tabs to let go, and wait.
+function onDbBlocked() {
+  if (dbChannel) { try { dbChannel.postMessage({ type: 'release' }); } catch(e) {} }
+  if (!_blockedNoticeShown) {
+    _blockedNoticeShown = true;
+    toast('Updating storage… waiting for another open tab to release it. This continues automatically.', 'info', 6000);
+    setTimeout(function() { _blockedNoticeShown = false; }, 8000);
+  }
+}
+
+if (dbChannel) {
+  dbChannel.onmessage = function(ev) {
+    if (ev.data && ev.data.type === 'release' && db) { dropConnection(); scheduleReconnect(); }
+  };
+}
+
+function openDBVersion(version) {
+  return new Promise(function(resolve, reject) {
+    if (!window.indexedDB) { reject(new Error('IndexedDB is not supported in this browser.')); return; }
+    let r;
+    try { r = version ? indexedDB.open(DB_NAME, version) : indexedDB.open(DB_NAME); } catch(e) { reject(e); return; }
+    r.onupgradeneeded = function() { upgradeSchema(r.result, r.transaction); };
+    r.onblocked = onDbBlocked;
+    r.onsuccess = function() {
+      const d = r.result;
+      // Another tab wants to upgrade → release immediately so it is never blocked by us
+      d.onversionchange = function() { try { d.close(); } catch(e) {} if (db === d) db = null; scheduleReconnect(); };
+      // Browser closed the connection unexpectedly → forget it so the next operation reconnects
+      d.onclose = function() { if (db === d) db = null; };
+      resolve(d);
+    };
+    r.onerror = function() { reject(r.error); };
+  });
+}
+
+function schemaOk(d) {
+  for (let i = 0; i < DB_STORES.length; i++) if (!d.objectStoreNames.contains(DB_STORES[i])) return false;
+  const tx = d.transaction(['items', 'sales', 'customers'], 'readonly');
+  for (const st in EXPECTED_INDEXES) {
+    const os = tx.objectStore(st);
+    for (let i = 0; i < EXPECTED_INDEXES[st].length; i++) if (!os.indexNames.contains(EXPECTED_INDEXES[st][i])) return false;
+    const obs = OBSOLETE_INDEXES[st] || [];
+    for (let j = 0; j < obs.length; j++) if (os.indexNames.contains(obs[j])) return false;
+  }
+  return true;
+}
+
+function withUpgradeLock(fn) {
+  if (navigator.locks && navigator.locks.request) return navigator.locks.request('ekambani-pos-db-upgrade', fn);
+  return fn();
+}
+
+// Only one tab at a time performs an upgrade; the others re-check and skip it if it is already done
+function upgradeDB() {
+  return withUpgradeLock(async function() {
+    let d = await openDBVersion();
+    if (schemaOk(d)) return d;
+    const next = d.version + 1;
+    d.close();
+    return await openDBVersion(next);
+  });
+}
+
+async function connectDB() {
+  let lastErr = null;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    try {
+      let d = await openDBVersion();                 // current version (creates a new database if none)
+      if (schemaOk(d)) return d;
+      d.close();
+      d = await upgradeDB();                         // older/missing structure → upgrade in place, data is kept
+      if (schemaOk(d)) return d;
+      d.close();
+    } catch (e) {
+      lastErr = e;
+      if (e && e.name === 'SecurityError') break;
+      await sleep(250 * (attempt + 1));              // VersionError / InvalidStateError / transient → retry
+    }
+  }
+  throw lastErr || new Error('Could not open the local database.');
+}
+
+function getDB() {
+  if (db) return Promise.resolve(db);
+  if (_connecting) return _connecting;
+  _connecting = connectDB().then(function(d) { db = d; _connecting = null; return d; },
+                                 function(e) { _connecting = null; throw e; });
+  return _connecting;
+}
+
+function isTransient(e) { return !!e && (e.name === 'InvalidStateError' || e.name === 'AbortError' || e.retryable === true); }
+function abortErr(tx) {
+  const e = tx.error || new Error('Transaction aborted');
+  if (!tx.error) e.retryable = true;
+  return e;
+}
+
+// Run a database operation on the shared connection; if the connection was closed/invalid, reconnect and retry
+async function withDB(fn) {
+  let lastErr;
+  for (let a = 0; a < 3; a++) {
+    const d = await getDB();
+    try { return await fn(d); }
+    catch (e) {
+      if (!isTransient(e)) throw e;
+      lastErr = e;
+      if (db === d) dropConnection();
+      await sleep(150 * (a + 1));
+    }
+  }
+  throw lastErr;
+}
+
+async function initDB() {
+  await getDB();
+  _dbBooted = true;
+  if (navigator.storage && navigator.storage.persist) { try { navigator.storage.persist(); } catch(e) {} }
+  return db;
+}
+
+// Release the connection when the page is hidden/frozen/cached so it can never block another tab's upgrade
+window.addEventListener('pagehide', function() { dropConnection(); });
+window.addEventListener('pageshow', function() { if (_dbBooted && !db) getDB().catch(function() {}); });
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible' && _dbBooted && !db) getDB().catch(function() {});
+});
+
+function reqP(r) {
+  return new Promise(function(res, rej) { r.onsuccess = function() { res(r.result); }; r.onerror = function() { rej(r.error); }; });
+}
+function txDone(tx) {
+  return new Promise(function(res, rej) {
+    tx.oncomplete = function() { res(true); };
+    tx.onerror = function() { rej(tx.error); };
+    tx.onabort = function() { rej(abortErr(tx)); };
+  });
+}
+function dbGet(store, key)    { return withDB(function(d) { return reqP(d.transaction(store, 'readonly').objectStore(store).get(key)); }); }
+function dbPut(store, val)    { return withDB(function(d) { const tx = d.transaction(store, 'readwrite'); tx.objectStore(store).put(val); return txDone(tx); }); }
+function dbDelete(store, key) { return withDB(function(d) { const tx = d.transaction(store, 'readwrite'); tx.objectStore(store).delete(key); return txDone(tx); }); }
+
+/* ── Key-range + cursor helpers (all large reads go through these) ── */
+function rng(lo, hi, loOpen, hiOpen) {
+  if (lo != null && hi != null) return IDBKeyRange.bound(lo, hi, !!loOpen, !!hiOpen);
+  if (lo != null) return IDBKeyRange.lowerBound(lo, !!loOpen);
+  if (hi != null) return IDBKeyRange.upperBound(hi, !!hiOpen);
+  return undefined;
+}
+
+// Stream every matching record through onRow without keeping them in memory.
+// If the connection drops mid-stream, it reconnects and RESUMES after the last row delivered (no double counting).
+function streamQ(o, onRow) {
+  const st = { lastKey: null };
+  return withDB(function(d) {
+    return new Promise(function(resolve, reject) {
+      let lo = o.lo, hi = o.hi, loOpen = false, hiOpen = false;
+      const dir = o.dir || 'next';
+      if (st.lastKey != null) { if (dir === 'next') { lo = st.lastKey; loOpen = true; } else { hi = st.lastKey; hiOpen = true; } }
+      let range;
+      try { range = rng(lo, hi, loOpen, hiOpen); } catch(e) { resolve(); return; }
+      const tx = d.transaction(o.store, 'readonly');
+      let src = tx.objectStore(o.store);
+      if (o.index) src = src.index(o.index);
+      const r = src.openCursor(range, dir);
+      r.onsuccess = function(e) {
+        const c = e.target.result;
+        if (!c) { resolve(); return; }
+        if (!o.pred || o.pred(c.value)) onRow(c.value);
+        st.lastKey = c.key;
+        c.continue();
+      };
+      r.onerror = function() { reject(r.error); };
+    });
+  });
+}
+
+// Fetch ONE page. q keeps its own position (q.lastKey) so the next call continues where this one stopped.
+// q.unit(v) (optional) groups rows into units (e.g. invoices) so a unit is never split across pages.
+function runPage(q) {
+  return withDB(function(d) {
+    return new Promise(function(resolve, reject) {
+      let lo = q.lo, hi = q.hi, loOpen = false, hiOpen = false;
+      if (q.lastKey != null) {
+        if ((q.dir || 'next') === 'next') { lo = q.lastKey; loOpen = true; } else { hi = q.lastKey; hiOpen = true; }
+      }
+      let range;
+      try { range = rng(lo, hi, loOpen, hiOpen); } catch(e) { q.more = false; resolve([]); return; }
+      const tx = d.transaction(q.store, 'readonly');
+      let src = tx.objectStore(q.store);
+      if (q.index) src = src.index(q.index);
+      const out = [];
+      let units = 0, lastUnit, lastKey = q.lastKey, finished = false;
+      function finish(more) { if (finished) return; finished = true; q.lastKey = lastKey; q.more = more; resolve(out); }
+      const r = src.openCursor(range, q.dir || 'next');
+      r.onsuccess = function(e) {
+        const c = e.target.result;
+        if (!c) { finish(false); return; }
+        const v = c.value;
+        if (q.pred && !q.pred(v)) { c.continue(); return; }
+        const u = q.unit ? q.unit(v) : null;
+        const isNew = q.unit ? (units === 0 || u !== lastUnit) : true;
+        if (isNew) {
+          if (units >= q.limit) { finish(true); return; }
+          units++; lastUnit = u;
+        }
+        out.push(v); lastKey = c.key;
+        c.continue();
+      };
+      r.onerror = function() { if (!finished) reject(r.error); };
+    });
+  });
+}
+
+/* ── Settings ── */
+async function loadBizSettings() {
+  try {
+    const s = await dbGet('settings', 'business');
+    if (s) bizSettings = Object.assign({ key:'business', name:'', phone:'', address:'', desc:'', logo:'', soldBy:'' }, s);
+  } catch(e) { console.error(e); }
+  applyBizName();
+}
+async function dbSaveSettings(obj) {
+  bizSettings = Object.assign({}, bizSettings, obj, { key: 'business' });
+  await dbPut('settings', bizSettings);
+  applyBizName();
+}
+function applyBizName() {
+  const n = bizSettings.name || 'Ekambani';
+  $('#sidebarBizName').text(n);
+  $('#mobileHeaderTitle').text(n.toUpperCase().substring(0, 20));
+}
+
+/* ── Stock value (cached; recalculated only after stock/cost changes) ── */
+let _stockVal = null;
+function invalidateStock() { _stockVal = null; }
+async function getStockValue() {
+  if (_stockVal !== null) return _stockVal;
+  let s = 0;
+  await streamQ({ store: 'items' }, function(v) { s += Number(v.costPrice) * Number(v.stock); });
+  _stockVal = s;
+  return s;
+}
+
+/* ── Items ── */
+async function dbSaveItem(d) {
+  const existing = d.id ? await dbGet('items', d.id) : null;
+  let cost = Number(d.costPrice);
+  if (d.newCostPrice !== undefined && d.newCostPrice !== null && d.newCostPrice !== '') {
+    const ncp = Number(d.newCostPrice);
+    if (!isNaN(ncp) && ncp > 0) cost = ncp;
+  }
+  const now = Date.now();
+  const rec = {
+    id: d.id || uuid(),
+    itemName: d.itemName, category: d.category,
+    costPrice: cost, sellPrice: Number(d.sellPrice),
+    stock: Number(d.stock), minStock: Number(d.minStock) || 0,
+    date: now, created: existing ? (existing.created || existing.date || now) : now,
+    newCostPrice: ''
+  };
+  await dbPut('items', rec);
+  invalidateStock();
+  return { success: true };
+}
+
+/* ── Sales (one row per item sold) ── */
+function dbSaveSale(d) {
+  return withDB(function(dbc) { return new Promise(function(resolve, reject) {
+    let result = null;
+    const tx = dbc.transaction(['items', 'sales', 'customers'], 'readwrite');
+    const itemsS = tx.objectStore('items'), salesS = tx.objectStore('sales'), custS = tx.objectStore('customers');
+    tx.oncomplete = function() { invalidateStock(); resolve(result); };
+    tx.onerror    = function() { reject(tx.error); };
+    tx.onabort    = function() {
+      if (result && result.error) resolve(result);
+      else reject(abortErr(tx));
+    };
+    function fail(msg) { result = { error: true, message: msg }; try { tx.abort(); } catch(e) {} }
+
+    const inv = {}, touched = {};
+    // Load ONLY the items involved in this sale (never the whole inventory)
+    function loadItems(ids, cb) {
+      const list = ids.filter(function(id, i) { return !(id in inv) && ids.indexOf(id) === i; });
+      let n = list.length;
+      if (!n) { cb(); return; }
+      list.forEach(function(id) {
+        itemsS.get(id).onsuccess = function(e) { inv[id] = e.target.result || null; if (--n === 0) cb(); };
+      });
+    }
+
+    function proceed() {
+      const qtyReq = {};
+      d.items.forEach(function(it) { qtyReq[it.id] = (qtyReq[it.id] || 0) + Number(it.qty); });
+      for (const id in qtyReq) {
+        const rec = inv[id];
+        if (!rec) return fail('Item not found. Please refresh.');
+        const live = Number(rec.stock);
+        if (live <= 0) return fail('Item "' + rec.itemName + '" is out of stock.');
+        if (qtyReq[id] > live) return fail('Insufficient stock for "' + rec.itemName + '". Available: ' + live + ', Requested: ' + qtyReq[id] + '.');
+      }
+      const invoice = d.invoice || ('EK-' + Date.now());
+      const saleDate = d.saleDate || getLocalDateStr(new Date());
+      const lines = [];
+      d.items.forEach(function(it) {
+        const rec = inv[it.id];
+        rec.stock = Number(rec.stock) - Number(it.qty);
+        touched[it.id] = true;
+        lines.push({
+          id: uuid(), invoice: invoice, itemId: it.id, itemName: it.itemName,
+          qty: Number(it.qty), price: Number(it.price), total: Number(it.total),
+          profit: Number(it.total) - Number(rec.costPrice) * Number(it.qty),
+          customerName: d.customerName || '', customerPhone: d.customerPhone || '',
+          date: saleDate, imei1: d.imei1 || '', imei2: d.imei2 || '', imei3: d.imei3 || '',
+          paymentMethod: d.paymentMethod || 'KSH', salesBy: d.salesBy || ''
+        });
+      });
+      Object.keys(touched).forEach(function(id) { if (inv[id]) itemsS.put(inv[id]); });
+      lines.forEach(function(l) { salesS.put(l); });
+      const cn = (d.customerName || '').trim(), cp = (d.customerPhone || '').trim();
+      if (cn || cp) custS.put({ id: cp ? ('p:' + cp) : ('n:' + cn.toLowerCase()), name: cn, phone: cp, lastSale: saleDate });
+      result = { invoice: invoice, data: d };
+    }
+
+    const cartIds = d.items.map(function(it) { return it.id; });
+    if (d.isUpdate && d.invoice) {
+      salesS.index('invoice').getAll(d.invoice).onsuccess = function(e2) {
+        const old = e2.target.result;
+        loadItems(old.map(function(l) { return l.itemId; }).concat(cartIds), function() {
+          old.forEach(function(l) {
+            if (inv[l.itemId]) { inv[l.itemId].stock = Number(inv[l.itemId].stock) + Number(l.qty); touched[l.itemId] = true; }
+            salesS.delete(l.id);
+          });
+          proceed();
+        });
+      };
+    } else {
+      loadItems(cartIds, proceed);
+    }
+  }); });
+}
+
+function dbDeleteInvoice(invoice) {
+  return withDB(function(dbc) { return new Promise(function(resolve, reject) {
+    const tx = dbc.transaction(['items', 'sales'], 'readwrite');
+    const itemsS = tx.objectStore('items'), salesS = tx.objectStore('sales');
+    tx.oncomplete = function() { invalidateStock(); resolve(true); };
+    tx.onerror = function() { reject(tx.error); };
+    tx.onabort = function() { reject(abortErr(tx)); };
+    salesS.index('invoice').getAll(invoice).onsuccess = function(ev) {
+      const restore = {};
+      ev.target.result.forEach(function(l) { restore[l.itemId] = (restore[l.itemId] || 0) + Number(l.qty); salesS.delete(l.id); });
+      Object.keys(restore).forEach(function(id) {
+        itemsS.get(id).onsuccess = function(e2) {
+          const rec = e2.target.result;
+          if (rec) { rec.stock = Number(rec.stock) + restore[id]; itemsS.put(rec); }
+        };
+      });
+    };
+  }); });
+}
+
+function lineView(r) {
+  return {
+    id: r.id, invoice: r.invoice, itemId: r.itemId, item: r.itemName, qty: r.qty, price: r.price,
+    total: r.total, profit: r.profit, customer: r.customerName, phone: r.customerPhone, date: r.date,
+    imei1: r.imei1, imei2: r.imei2, imei3: r.imei3, payment: r.paymentMethod, salesBy: r.salesBy || ''
+  };
+}
+async function dbInvoiceLines(invoice) {
+  const rows = await withDB(function(d) { return reqP(d.transaction('sales', 'readonly').objectStore('sales').index('invoice').getAll(invoice)); });
+  return rows.map(lineView);
+}
+
+/* ═══════════════════════════════════════
+   LAYOUT / NAVIGATION
+═══════════════════════════════════════ */
+const VIEW_TITLES = {
+  homeView:'Home', purchaseView:'Purchase', salesView:'Sales', reportView:'Reports',
+  bizView:'Business Settings', aboutView:'About Us', privacyView:'Privacy Policy',
+  contactView:'Contact Us', upgradeView:'Upgrade'
+};
+const MORE_VIEWS = ['bizView','aboutView','privacyView','contactView','upgradeView'];
+
+function showView(id) {
+  closeMore();
+  $('.view').removeClass('active');
+  $('#' + id).addClass('active');
+  const navKey = MORE_VIEWS.indexOf(id) !== -1 ? 'more' : id;
+  $('.nav-item,.sidebar-nav-item').removeClass('active');
+  $('[data-view="' + navKey + '"]').addClass('active');
+  $('#desktopViewTitle').text(VIEW_TITLES[id] || '');
+  if (id === 'bizView') fillBizForm();
+  window.scrollTo({ top: 0 });
+  $('.main-wrapper').scrollTop(0);
+}
+
+/* ── More dropdown ── */
+function toggleMore(el) {
+  if ($('#moreMenu').hasClass('open')) { closeMore(); return; }
+  openMore(el);
+}
+function openMore(el) {
+  const menu = $('#moreMenu');
+  menu.addClass('open');
+  const r = el.getBoundingClientRect();
+  const mw = menu.outerWidth(), mh = menu.outerHeight();
+  let left, top;
+  if (window.innerWidth >= 768) {
+    left = Math.min(r.right + 8, window.innerWidth - mw - 8);
+    top  = Math.max(8, Math.min(r.top, window.innerHeight - mh - 8));
+  } else {
+    left = Math.max(8, Math.min(r.left + r.width / 2 - mw / 2, window.innerWidth - mw - 8));
+    top  = Math.max(8, r.top - mh - 8);
+  }
+  menu.css({ left: left + 'px', top: top + 'px' });
+  $('#moreBackdrop').addClass('open');
+}
+function closeMore() {
+  $('#moreMenu').removeClass('open');
+  $('#moreBackdrop').removeClass('open');
+}
+function moreGo(viewId) { showView(viewId); }
+$(window).on('resize', closeMore);
+
+/* ── Video Guide / WhatsApp ── */
+function openVideoGuide() {
+  closeMore();
+  const url = (VIDEO_GUIDE_URL || '').trim();
+  if (!url) { toast('Video guide coming soon.', 'info'); return; }
+  window.open(url, '_blank', 'noopener');
+}
+function openWhatsApp(number, text) {
+  const n = String(number || '').replace(/\D/g, '');
+  if (!n) { toast('WhatsApp number has not been set yet.', 'warning'); return; }
+  window.open('https://wa.me/' + n + (text ? '?text=' + encodeURIComponent(text) : ''), '_blank', 'noopener');
+}
+function contactWhatsApp() {
+  openWhatsApp(CONTACT_WHATSAPP_NUMBER, 'Hello, I need help with Ekambani POS.');
+}
+function upgradeWhatsApp() {
+  const biz = $('#upBizName').val().trim(), phone = $('#upPhone').val().trim();
+  if (!biz || !phone) { toast('Please enter your business name and phone number.', 'warning'); return; }
+  openWhatsApp(UPGRADE_WHATSAPP_NUMBER,
+    'Hello, I would like to upgrade to the POS + Finance System.\nBusiness Name: ' + biz + '\nPhone: ' + phone);
+}
+
+/* ═══════════════════════════════════════
+   SEARCHABLE ITEM DROPDOWNS (Select2, fed straight from IndexedDB, page by page)
+═══════════════════════════════════════ */
+function makeItemAjax(inStockOnly, withAll) {
+  let st = null;
+  return {
+    delay: 150,
+    data: function(p) { return { term: p.term || '', page: p.page || 1 }; },
+    transport: function(params, success, failure) {
+      let cancelled = false;
+      const term = (params.data.term || '').toLowerCase().trim();
+      const page = params.data.page || 1;
+      if (page === 1 || !st || st.term !== term) {
+        const match = itemMatcher(tokensOf(term));
+        st = { term: term, q: {
+          store: 'items', index: 'order', dir: 'next', limit: PAGE_SELECT, lastKey: null,
+          pred: function(v) {
+            if (inStockOnly && !(Number(v.stock) > 0)) return false;
+            return match ? match(v) : true;
+          }
+        } };
+      }
+      const q = st.q;
+      runPage(q).then(function(rows) {
+        if (cancelled) return;
+        const results = rows.map(function(i) {
+          return { id: i.id, text: i.itemName + ' (Stock: ' + i.stock + ')', itemName: i.itemName, sellPrice: i.sellPrice, stock: i.stock };
+        });
+        if (withAll && page === 1 && (!term || 'all items'.indexOf(term) !== -1)) results.unshift({ id: '__all__', text: 'All Items' });
+        success({ results: results, pagination: { more: !!q.more } });
+      }).catch(function() { if (!cancelled) failure(); });
+      return { abort: function() { cancelled = true; } };
+    }
+  };
+}
+
+function clearSaleItemSelect() {
+  $('#saleItem').empty().append('<option value=""></option>').trigger('change');
+}
+
+/* ═══════════════════════════════════════
+   BOOT
+═══════════════════════════════════════ */
+function setupFilters() {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const cm = new Date().getMonth(), cy = new Date().getFullYear();
+  $('#dashMonth,#repMonth,#dashYear,#repYear').html('');
+  months.forEach((m,i) => {
+    $('#dashMonth').append(`<option value="${i}" ${i===cm?'selected':''}>${m}</option>`);
+    $('#repMonth').append(`<option value="${i}">${m}</option>`);
+  });
+  $('#repMonth').prepend('<option value="-1">All Time</option>');
+  for (let y = cy; y >= 2024; y--) {
+    $('#dashYear,#repYear').append(`<option value="${y}" ${y===cy?'selected':''}>${y}</option>`);
+  }
+}
+
+async function bootApp() {
+  try {
+    await initDB();
+  } catch (err) {
+    console.error(err);
+    Swal.fire('Storage unavailable', 'The local database could not be opened after several attempts. Please refresh the page. Details: ' + (err && err.message ? err.message : err), 'error');
+    return;
+  }
+  await loadBizSettings();
+  $('#saleItem').select2({ width:'100%', placeholder:'Select Item...', ajax: makeItemAjax(true, false) });
+  $('#repItem').select2({ width:'100%', placeholder:'All Items', ajax: makeItemAjax(false, true) });
+  $('#saleItem').on('select2:select', function(e) {
+    const d = e.params.data;
+    if (d && d.sellPrice !== undefined) { $('#salePrice').val(d.sellPrice); $('#saleQty').val(1); }
+  });
+  document.getElementById('saleDate').value = getLocalDateStr(new Date());
+  setupFilters();
+  loadPurchase(true);
+  runDashReport();
+  fetchSalesRecords();
+}
+$(document).ready(bootApp);
+
+/* ═══════════════════════════════════════
+   DASHBOARD
+═══════════════════════════════════════ */
+let _dashTok = 0;
+let dashState = { rows: [], shown: 0, ts: 0, tp: 0, total: 0 };
+let groupState = { keys: [], groups: {}, shown: 0 };
+
+function formatGroupDateLabel(dateKey) {
+  const dd = parseYMDLocal(dateKey);
+  if (!dd) return dateKey;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const yest = new Date(today); yest.setDate(yest.getDate()-1);
+  if (dd.getTime() === today.getTime()) return 'Today';
+  if (dd.getTime() === yest.getTime()) return 'Yesterday';
+  return dd.toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+}
+
+function groupDateHtml(dateKey) {
+  const g = groupState.groups[dateKey];
+  let html = `<div class="grouped-date-block">
+      <div class="grouped-date-header">
+        <span class="grouped-date-title">${esc(formatGroupDateLabel(dateKey))}</span>
+        <span class="grouped-date-stats">
+          <span class="grouped-date-sales">Sales Amount: ${g.sales.toLocaleString()}</span>
+          <span class="grouped-date-profit">Profit Amount: ${g.profit.toLocaleString()}</span>
+        </span>
+      </div>`;
+  Object.keys(g.persons).forEach(function(person) {
+    const items = g.persons[person];
+    let subtotal = 0, subtotalProfit = 0, rows = '';
+    items.forEach(function(it) {
+      subtotal += Number(it.total); subtotalProfit += Number(it.profit);
+      rows += `<tr><td>${esc(it.item)}</td><td>${Number(it.price).toLocaleString()}</td><td>${Number(it.profit).toLocaleString()}</td><td>${Number(it.total).toLocaleString()}</td></tr>`;
+    });
+    html += `<div class="grouped-sales-block">
+        <div class="grouped-sales-header"><strong>${esc(person)}</strong></div>
+        <table><thead><tr><th>Item</th><th>Selling Price</th><th>Profit</th><th>Total</th></tr></thead><tbody>${rows}</tbody>
+        <tfoot><tr style="font-weight:bold;background:#f8fafc;"><td colspan="2">Subtotal</td><td>${subtotalProfit.toLocaleString()}</td><td>${subtotal.toLocaleString()}</td></tr></tfoot></table>
+      </div>`;
+  });
+  return html + `</div>`;
+}
+
+function buildGroupedSales(salesArr) {
+  const groups = {};
+  salesArr.forEach(function(s) {
+    const dateKey = s.date || 'Unknown';
+    const person  = s.salesBy && s.salesBy.trim() ? s.salesBy.trim() : 'Unknown';
+    if (!groups[dateKey]) groups[dateKey] = { sales:0, profit:0, persons:{} };
+    groups[dateKey].sales  += Number(s.total);
+    groups[dateKey].profit += Number(s.profit);
+    if (!groups[dateKey].persons[person]) groups[dateKey].persons[person] = [];
+    groups[dateKey].persons[person].push(s);
+  });
+  const keys = Object.keys(groups).sort((a,b) => (parseYMDLocal(b) || 0) - (parseYMDLocal(a) || 0));
+  groupState = { keys: keys, groups: groups, shown: 0 };
+  const container = $('#groupedSalesContainer');
+  if (!keys.length) {
+    container.html('<p style="color:#94a3b8;padding:8px 0;font-size:12px;">No sales found for this period.</p>');
+    $('#groupedMoreWrap').html('');
+    return;
+  }
+  container.html('');
+  showMoreGroups();
+}
+function showMoreGroups() {
+  const st = groupState;
+  const next = st.keys.slice(st.shown, st.shown + PAGE_DAYS);
+  $('#groupedSalesContainer').append(next.map(groupDateHtml).join(''));
+  st.shown += next.length;
+  const left = st.keys.length - st.shown;
+  $('#groupedMoreWrap').html(left > 0
+    ? `<button class="load-more-btn" onclick="showMoreGroups()">Show more days (${left} remaining)</button>` : '');
+}
+
+function renderDashRows() {
+  const st = dashState;
+  const next = st.rows.slice(st.shown, st.shown + PAGE_DASH);
+  let h = '';
+  next.forEach(s => {
+    h += `<tr><td>${esc(s.itemName)}</td><td>${Number(s.price).toLocaleString()}</td><td class="profit-col">${Number(s.profit).toLocaleString()}</td><td>${Number(s.total).toLocaleString()}</td></tr>`;
+  });
+  $('#dashSummaryTable').append(h);
+  st.shown += next.length;
+  const left = st.rows.length - st.shown;
+  $('#dashMoreWrap').html(left > 0
+    ? `<button class="load-more-btn" onclick="renderDashRows()">Show more (${left} remaining)</button>` : '');
+}
+
+async function runDashReport() {
+  if (!_dbBooted) return;
+  const tok = ++_dashTok;
+  const m = $('#dashMonth').val(), y = $('#dashYear').val();
+  const range = dateRange(m, y);
+  const rows = [];
+  let totalSales = 0, totalProfit = 0, ts = 0;
+  try {
+    await streamQ({ store: 'sales', index: 'dateInv', dir: 'next', lo: [range[0]], hi: [range[1], '\uffff'] }, function(v) {
+      rows.push(v); totalSales += Number(v.total); totalProfit += Number(v.profit); ts += Number(v.price);
+    });
+    const stockVal = await getStockValue();
+    if (tok !== _dashTok) return;
+    $('#dashSales').text(totalSales.toLocaleString());
+    $('#dashProfit').text(totalProfit.toLocaleString());
+    $('#dashStock').text(stockVal.toLocaleString());
+    dashState = { rows: rows, shown: 0 };
+    $('#dashSummaryTable').html('');
+    renderDashRows();
+    $('#dashSummaryFoot').html(`<tr><td>TOTAL</td><td>${ts.toLocaleString()}</td><td class="profit-col">${totalProfit.toLocaleString()}</td><td>${totalSales.toLocaleString()}</td></tr>`);
+    buildGroupedSales(rows.map(lineView));
+  } catch (err) { console.error(err); toast('Could not load dashboard', 'error'); }
+}
+
+/* ═══════════════════════════════════════
+   PURCHASE (items) — paged, index-driven
+═══════════════════════════════════════ */
+let purQ = null, _purTok = 0;
+
+function purchaseRowHtml(i) {
+  const cls = Number(i.stock) <= Number(i.minStock) ? 'low-stock' : '';
+  return `<tr><td>${fmtDate(i.date)}</td>
+    <td>${esc(i.itemName)}<br><small style="color:#94a3b8">${esc(i.category)}</small></td>
+    <td>${Number(i.costPrice).toLocaleString()}</td><td class="${cls}">${i.stock}</td>
+    <td class="action-icons"><i class="fas fa-eye" style="color:#0891b2" title="View" onclick="viewItem('${esc(i.id)}')"></i>
+        <i class="fas fa-edit" style="color:#2563eb" onclick="editItem('${esc(i.id)}')"></i>
+        <i class="fas fa-trash" style="color:#ef4444" onclick="confirmDelete('${esc(i.id)}')"></i></td></tr>`;
+}
+
+async function loadPurchase(reset) {
+  if (!_dbBooted) return;
+  if (reset || !purQ) {
+    purQ = { store: 'items', index: 'order', dir: 'next', limit: PAGE_ITEMS, lastKey: null,
+             pred: itemMatcher(tokensOf($('#purSearch').val())) };
+    $('#purchaseTable').html('');
+    $('#purMoreWrap').html('');
+  }
+  const tok = ++_purTok;
+  const q = purQ;
+  try {
+    const rows = await runPage(q);
+    if (tok !== _purTok) return;
+    if (reset && !rows.length) {
+      $('#purchaseTable').html('<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:20px">No items found</td></tr>');
+    } else {
+      $('#purchaseTable').append(rows.map(purchaseRowHtml).join(''));
+    }
+    $('#purMoreWrap').html(q.more ? `<button class="load-more-btn" onclick="loadPurchase(false)">Load more</button>` : '');
+  } catch (err) { console.error(err); toast('Could not load items', 'error'); }
+}
+const filterPurchase = debounce(function() { loadPurchase(true); }, 200);
+
+/* ═══════════════════════════════════════
+   SALES
+═══════════════════════════════════════ */
+let salesQ = null, _salesTok = 0;
+
+function newSalesQuery() {
+  const v = ($('#saleSearch').val() || '').toLowerCase();
+  const range = dateRange(-1, new Date().getFullYear());
+  return {
+    store: 'sales', index: 'dateInv', dir: 'prev', limit: PAGE_INVOICE, lastKey: null,
+    lo: [range[0]], hi: [range[1], '\uffff'],
+    unit: function(s) { return s.invoice; },
+    pred: v ? function(s) {
+      return (s.invoice || '').toLowerCase().indexOf(v) !== -1 ||
+             (s.itemName || '').toLowerCase().indexOf(v) !== -1 ||
+             (s.customerName || '').toLowerCase().indexOf(v) !== -1;
+    } : null
+  };
+}
+
+function salesRowsHtml(lines) {
+  const order = [], map = {};
+  lines.forEach(function(r) {
+    const s = lineView(r);
+    if (!map[s.invoice]) { map[s.invoice] = Object.assign({}, s, { items: [], totalAmount: 0 }); order.push(s.invoice); }
+    map[s.invoice].items.push(`${esc(s.item)} (x${s.qty})`);
+    map[s.invoice].totalAmount += Number(s.total);
+  });
+  return order.map(function(inv) {
+    const s = map[inv];
+    return `<tr>
+      <td>${esc(s.date)}</td><td>${esc(s.invoice)}</td><td>${s.items.join('<br>')}</td>
+      <td>${s.totalAmount.toLocaleString()}</td><td>${esc(s.customer)}</td><td>${esc(s.phone)}</td><td>${esc(s.payment)}</td>
+      <td class="action-icons">
+        <i class="fas fa-print" title="Print" onclick="reprint('${esc(s.invoice)}')"></i>
+        <i class="fas fa-edit" title="Edit" style="color:#2563eb" onclick="editSaleByInvoice('${esc(s.invoice)}')"></i>
+        <i class="fas fa-trash" title="Delete" style="color:#ef4444" onclick="confirmDeleteSale('${esc(s.invoice)}')"></i>
+      </td></tr>`;
+  }).join('');
+}
+
+async function loadSalesList(reset) {
+  if (!_dbBooted) return;
+  if (reset || !salesQ) {
+    salesQ = newSalesQuery();
+    $('#salesTableBody').html('');
+    $('#salesMoreWrap').html('');
+  }
+  const tok = ++_salesTok;
+  const q = salesQ;
+  try {
+    const rows = await runPage(q);
+    if (tok !== _salesTok) return;
+    if (reset && !rows.length) {
+      $('#salesTableBody').html('<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:20px">No sales records</td></tr>');
+    } else {
+      $('#salesTableBody').append(salesRowsHtml(rows));
+    }
+    $('#salesMoreWrap').html(q.more ? `<button class="load-more-btn" onclick="loadSalesList(false)">Load more</button>` : '');
+  } catch (err) { console.error(err); toast('Could not load sales', 'error'); }
+}
+function fetchSalesRecords() { loadSalesList(true); }
+const filterSales = debounce(function() { loadSalesList(true); }, 200);
+
+async function addToCart() {
+  const id = $('#saleItem').val(), qty = parseInt($('#saleQty').val()), pr = parseFloat($('#salePrice').val());
+  if (!id) { toast('Please select an item first','warning'); return; }
+  if (!qty || qty < 1) { toast('Enter a valid quantity','warning'); return; }
+  if (isNaN(pr) || pr < 0) { toast('Enter a valid price','warning'); return; }
+  let itm;
+  try { itm = await dbGet('items', id); } catch(e) { console.error(e); toast('Could not read item','error'); return; }
+  if (!itm) { toast('Item not found','error'); return; }
+  const inCart = cart.filter(c => c.id === id).reduce((a,b) => a + b.qty, 0);
+  const avail = Number(itm.stock);
+  if (avail <= 0) { toast(`"${itm.itemName}" is out of stock`,'error'); return; }
+  if ((qty + inCart) > avail) { toast(`Only ${avail - inCart} unit(s) available for "${itm.itemName}"`,'warning'); return; }
+  cart.push({ id: itm.id, itemName: itm.itemName, qty, price: pr, total: qty * pr });
+  renderCart(); toast('Added to cart','success',1800);
+  clearSaleItemSelect();
+  $('#saleQty,#salePrice').val('');
+}
+
+function renderCart() {
+  let h = '', t = 0;
+  cart.forEach((c,i) => {
+    t += c.total;
+    h += `<tr><td>${esc(c.itemName)}</td><td>${c.qty}</td><td>${c.price.toLocaleString()}</td><td>${c.total.toLocaleString()}</td>
+    <td onclick="cart.splice(${i},1);renderCart()" style="cursor:pointer;color:#ef4444"><i class="fas fa-times"></i></td></tr>`;
+  });
+  $('#cartTable').html(h); $('#grandTotal').text(t.toLocaleString());
+}
+
+function completeSale() {
+  if (!cart.length) { toast('Please add items to cart first','warning'); return; }
+  if ($('#btnCompleteSale').prop('disabled')) return;   // already saving — prevents duplicate saves
+  const wasEdit = editMode;
+  const d = {
+    customerName: $('#custName').val(), customerPhone: $('#custPhone').val(),
+    saleDate: $('#saleDate').val() || getLocalDateStr(new Date()),
+    imei1: $('#imei1').val(), imei2: $('#imei2').val(), imei3: $('#imei3').val(),
+    paymentMethod: $('#payMethod').val(),
+    items: cart.map(c => ({ ...c })), isUpdate: editMode, invoice: currentEditInvoice,
+    salesBy: bizSettings.soldBy || ''
+  };
+  btnLoad('btnCompleteSale', 'Processing...');
+  Swal.fire({ title:'Processing...', allowOutsideClick:false, didOpen:() => Swal.showLoading() });
+  dbSaveSale(d).then(res => {
+    btnReset('btnCompleteSale');
+    if (res && res.error) { Swal.close(); toast(res.message, 'error', 5000); loadPurchase(true); return; }
+    Swal.fire(wasEdit ? 'Updated!' : 'Sale Complete!', 'Invoice: ' + res.invoice, 'success');
+    toast(wasEdit ? 'Sale updated successfully' : 'Sale completed & invoice ready', 'success');
+    printInvoice(res); resetSalesForm();
+    loadPurchase(true); runDashReport(); fetchSalesRecords();
+  }).catch(err => {
+    btnReset('btnCompleteSale'); Swal.close();
+    toast('Sale could not be saved. Please try again.', 'error'); console.error(err);
+  });
+}
+
+async function editSaleByInvoice(invoiceNo) {
+  let items;
+  try { items = await dbInvoiceLines(invoiceNo); } catch(e) { console.error(e); toast('Could not load invoice','error'); return; }
+  if (!items.length) return;
+  const main = items[0];
+  editMode = true; currentEditInvoice = invoiceNo;
+  showView('salesView');
+  $('#salesFormTitle').text('Edit Sale: ' + invoiceNo);
+  $('#saleDate').val(main.date); $('#custName').val(main.customer); $('#custPhone').val(main.phone);
+  $('#imei1').val(main.imei1); $('#imei2').val(main.imei2); $('#imei3').val(main.imei3);
+  $('#payMethod').val(main.payment || 'KSH'); $('#btnCancelEdit').show();
+  cart = items.map(i => ({ id: i.itemId, itemName: i.item, qty: Number(i.qty), price: Number(i.price), total: Number(i.total) }));
+  renderCart(); window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function resetSalesForm() {
+  editMode = false; currentEditInvoice = null;
+  $('#salesFormTitle').text('New Sale');
+  $('#saleDate').val(getLocalDateStr(new Date()));
+  $('#imei1,#imei2,#imei3,#custName,#custPhone,#saleQty,#salePrice').val('');
+  $('#payMethod').val('KSH'); $('#btnCancelEdit').hide();
+  cart = []; renderCart();
+  clearSaleItemSelect();
+}
+
+function confirmDeleteSale(invoice) {
+  Swal.fire({ title:'Delete this invoice?', text:'Stock will be restored.', icon:'warning', showCancelButton:true, confirmButtonColor:'#d33' })
+  .then(r => {
+    if (r.isConfirmed) dbDeleteInvoice(invoice).then(() => {
+      toast('Invoice deleted and stock restored', 'success');
+      loadPurchase(true); fetchSalesRecords(); runDashReport();
+    }).catch(err => { console.error(err); toast('Could not delete invoice', 'error'); });
+  });
+}
+
+async function reprint(invoice) {
+  let items;
+  try { items = await dbInvoiceLines(invoice); } catch(e) { console.error(e); toast('Could not load invoice','error'); return; }
+  if (!items.length) return;
+  const main = items[0];
+  printInvoice({ invoice, data: {
+    customerName: main.customer, customerPhone: main.phone, paymentMethod: main.payment,
+    imei1: main.imei1, imei2: main.imei2, imei3: main.imei3, salesBy: main.salesBy,
+    items: items.map(i => ({ itemName: i.item, qty: i.qty, price: i.price, total: i.total }))
+  }});
+  toast('Invoice printed', 'info', 2000);
+}
+
+/* ═══════════════════════════════════════
+   REPORTS — totals are streamed from IndexedDB; rows load page by page
+═══════════════════════════════════════ */
+let repState = null;
+
+function repSalesRowHtml(r) {
+  const s = lineView(r);
+  return `<tr><td>${esc(s.date)}</td><td>${esc(s.invoice)}</td><td>${esc(s.item)}</td><td>${s.qty}</td>
+        <td>${Number(s.price).toLocaleString()}</td><td>${Number(s.total).toLocaleString()}</td>
+        <td>${Number(s.profit).toLocaleString()}</td><td>${esc(s.customer) || '-'}</td><td>${esc(s.payment) || '-'}</td></tr>`;
+}
+function repPurRowHtml(i) {
+  return `<tr><td>${fmtDate(i.date)}</td><td>${esc(i.itemName)}</td><td>${esc(i.category) || '-'}</td>
+      <td>${Number(i.costPrice).toLocaleString()}</td><td>${i.stock}</td>
+      <td>${(Number(i.costPrice) * Number(i.stock)).toLocaleString()}</td></tr>`;
+}
+
+async function loadRepSales(reset) {
+  const st = repState; if (!st) return;
+  const q = st.salesQ;
+  const rows = await runPage(q);
+  if (st !== repState) return;
+  if (reset && !rows.length) {
+    $('#repSalesTable tbody').html('<tr><td colspan="9" style="text-align:center;color:#94a3b8;padding:16px">No sales records found</td></tr>');
+  } else {
+    $('#repSalesTable tbody').append(rows.map(repSalesRowHtml).join(''));
+  }
+  $('#repSalesMore').html(q.more ? `<button class="load-more-btn" onclick="loadRepSales(false)">Load more sales</button>` : '');
+}
+async function loadRepPurch(reset) {
+  const st = repState; if (!st) return;
+  const q = st.purQ;
+  const rows = await runPage(q);
+  if (st !== repState) return;
+  if (reset && !rows.length) {
+    $('#repPurchaseTable tbody').html('<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:16px">No purchase records found</td></tr>');
+  } else {
+    $('#repPurchaseTable tbody').append(rows.map(repPurRowHtml).join(''));
+  }
+  $('#repPurMore').html(q.more ? `<button class="load-more-btn" onclick="loadRepPurch(false)">Load more purchases</button>` : '');
+}
+
+async function runReport() {
+  const m = $('#repMonth').val(), y = $('#repYear').val();
+  let itm = $('#repItem').val(); if (!itm || itm === '__all__') itm = '';
+  const pf = $('#repPayFilter').val();
+  btnLoad('btnRunReport', 'Loading...');
+  try {
+    const range = dateRange(m, y);
+    const base = itm
+      ? { index: 'itemDate', lo: [itm, range[0]], hi: [itm, range[1], '\uffff'] }
+      : { index: 'dateInv',  lo: [range[0]],      hi: [range[1], '\uffff'] };
+    const pred = pf ? function(v) { return v.paymentMethod === pf; } : null;
+    let ts = 0, tp = 0;
+    await streamQ({ store: 'sales', index: base.index, lo: base.lo, hi: base.hi, dir: 'prev', pred: pred }, function(v) {
+      ts += Number(v.total); tp += Number(v.profit);
+    });
+    const ms = msRange(m, y);
+    const purBase = { store: 'items', index: 'dateId', dir: 'next', lo: [ms[0]], hi: [ms[1], '\uffff'] };
+    let pv = 0;
+    await streamQ(purBase, function(v) { pv += Number(v.costPrice) * Number(v.stock); });
+
+    $('#repTotalSales').text(ts.toLocaleString());
+    $('#repTotalProfit').text(tp.toLocaleString());
+    $('#repTotalPurchases').text(pv.toLocaleString());
+    $('#repSalesTable tbody,#repPurchaseTable tbody').html('');
+    repState = {
+      salesQ: { store: 'sales', index: base.index, lo: base.lo, hi: base.hi, dir: 'prev', pred: pred, limit: PAGE_REPORT, lastKey: null },
+      purQ:   Object.assign({}, purBase, { limit: PAGE_REPORT, lastKey: null })
+    };
+    await loadRepSales(true);
+    await loadRepPurch(true);
+    $('#repDownloadBtn').show();
+    toast('Report generated', 'success');
+  } catch (err) { console.error(err); toast('Could not generate report', 'error'); }
+  btnReset('btnRunReport');
+}
+
+async function downloadPDF() {
+  if (!repState) return;
+  btnLoad('repDownloadBtn', 'Preparing...');
+  try {
+    // The PDF must contain every row, so load whatever is still waiting
+    while (repState.salesQ.more) await loadRepSales(false);
+    while (repState.purQ.more)   await loadRepPurch(false);
+  } catch (err) { console.error(err); toast('Could not prepare PDF', 'error'); btnReset('repDownloadBtn'); return; }
+  $('#reportHeader').show();
+  html2pdf().set({ margin:10, filename:'Ekambani_Report.pdf', html2canvas:{ scale:2 }, jsPDF:{ unit:'mm', format:'a4', orientation:'portrait' } })
+    .from(document.getElementById('reportPrintArea')).save()
+    .then(() => { $('#reportHeader').hide(); btnReset('repDownloadBtn'); toast('PDF downloaded', 'success'); })
+    .catch(() => { $('#reportHeader').hide(); btnReset('repDownloadBtn'); toast('PDF failed', 'error'); });
+}
+
+/* ═══════════════════════════════════════
+   BUSINESS SETTINGS  (includes Name / Sold by)
+═══════════════════════════════════════ */
+function fillBizForm() {
+  $('#bizLogo').val(bizSettings.logo || '');
+  $('#bizName').val(bizSettings.name || '');
+  $('#bizSoldBy').val(bizSettings.soldBy || '');
+  $('#bizPhone').val(bizSettings.phone || '');
+  $('#bizAddr').val(bizSettings.address || '');
+  $('#bizDesc').val(bizSettings.desc || '');
+}
+function saveBizSettings() {
+  const obj = {
+    name: $('#bizName').val().trim(), phone: $('#bizPhone').val().trim(),
+    address: $('#bizAddr').val().trim(), desc: $('#bizDesc').val().trim(),
+    logo: $('#bizLogo').val().trim(), soldBy: $('#bizSoldBy').val().trim()
+  };
+  btnLoad('btnSaveBiz', 'Saving...');
+  dbSaveSettings(obj).then(() => {
+    btnReset('btnSaveBiz'); toast('Business settings saved', 'success');
+  }).catch(err => { btnReset('btnSaveBiz'); console.error(err); toast('Could not save settings', 'error'); });
+}
+
+/* ═══════════════════════════════════════
+   PRINT INVOICE
+═══════════════════════════════════════ */
+function printInvoice(res) {
+  const s = bizSettings;
+  const ih = res.data.items.map(i => `<tr><td>${esc(i.itemName)}</td><td>${i.qty}</td><td>${Number(i.price).toLocaleString()}</td><td>${Number(i.total).toLocaleString()}</td></tr>`).join('');
+  const total = res.data.items.reduce((a,b) => a + Number(b.total), 0);
+  const imei = [res.data.imei1, res.data.imei2, res.data.imei3].filter(Boolean).map(esc).join(' | ');
+  const descHtml = s.desc
+    ? `<div style="margin-top:18px;padding-top:12px;border-top:1px dashed #ccc;text-align:center;font-size:12px;color:#555;">${esc(s.desc)}</div>` : '';
+  const soldBy = res.data.salesBy !== undefined && res.data.salesBy !== null ? res.data.salesBy : s.soldBy;
+  const w = window.open('', '', 'width=800,height=600');
+  if (!w) { toast('Allow pop-ups to print the invoice', 'warning', 5000); return; }
+  w.document.write(`<html><head><style>body{font-family:sans-serif;padding:20px}.header{text-align:center}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px}</style></head><body>
+    <div class="header">${s.logo ? `<img src="${esc(s.logo)}" style="max-width:80px"><br>` : ''}<h2>${esc(s.name || 'Ekambani')}</h2><p>${esc(s.address)}<br>${esc(s.phone)}</p><hr>
+    <h3>INVOICE: ${esc(res.invoice)}</h3>
+    <p>Customer: ${esc(res.data.customerName) || '-'} &nbsp;|&nbsp; Phone: ${esc(res.data.customerPhone) || '-'}</p></div>
+    <table><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody>${ih}</tbody></table>
+    <h3 style="text-align:right">Total: KSH ${total.toLocaleString()}</h3>
+    ${imei ? `<p><strong>IMEI:</strong> ${imei}</p>` : ''}
+    <p><strong>Payment:</strong> ${esc(res.data.paymentMethod) || '-'}</p>
+    <p style="margin-top:14px"><strong>Sales By:</strong> ${esc(soldBy) || '-'}</p>
+    ${descHtml}
+  </body></html>`);
+  w.document.close(); setTimeout(() => w.print(), 500);
+}
+
+/* ═══════════════════════════════════════
+   ITEM MODAL
+═══════════════════════════════════════ */
+function openModal() {
+  $('#itemModal input:not([type=hidden])').val(''); $('#itemId').val('');
+  $('#modalTitle').text('Add Item'); $('#itemModal').show();
+}
+function closeModal() { $('#itemModal').hide(); }
+function saveItem() {
+  if ($('#btnSaveItem').prop('disabled')) return;       // already saving — prevents duplicate saves
+  const name = $('#itemName').val().trim(), cat = $('#itemCat').val().trim(),
+        cost = $('#costPrice').val(), sell = $('#sellPrice').val(), stock = $('#stockQty').val();
+  if (!name || !cat || !cost || !sell || !stock) { toast('Please fill all required fields','warning'); return; }
+  const d = { id: $('#itemId').val(), itemName: name, category: cat,
+    costPrice: cost, sellPrice: sell, stock: stock, minStock: $('#minStock').val() || 0,
+    newCostPrice: $('#newCostPrice').val().trim() };
+  btnLoad('btnSaveItem', 'Saving...');
+  dbSaveItem(d).then(() => {
+    btnReset('btnSaveItem');
+    toast('Item saved successfully', 'success');
+    closeModal(); loadPurchase(true); runDashReport();
+  }).catch(err => { btnReset('btnSaveItem'); console.error(err); toast('Could not save item', 'error'); });
+}
+async function editItem(id) {
+  let i;
+  try { i = await dbGet('items', id); } catch(e) { console.error(e); toast('Could not read item','error'); return; }
+  if (!i) { toast('Item not found','error'); return; }
+  $('#itemId').val(i.id); $('#itemName').val(i.itemName); $('#itemCat').val(i.category);
+  $('#costPrice').val(i.costPrice); $('#sellPrice').val(i.sellPrice);
+  $('#stockQty').val(i.stock); $('#minStock').val(i.minStock);
+  $('#newCostPrice').val('');
+  $('#modalTitle').text('Edit Item'); $('#itemModal').show();
+}
+function confirmDelete(id) {
+  Swal.fire({ title:'Delete item?', showCancelButton:true, confirmButtonColor:'#d33' })
+  .then(r => {
+    if (r.isConfirmed) dbDelete('items', id).then(() => {
+      invalidateStock();
+      toast('Item deleted', 'success'); loadPurchase(true); runDashReport();
+    }).catch(err => { console.error(err); toast('Could not delete item', 'error'); });
+  });
+}
+
+async function viewItem(id) {
+  let i;
+  try { i = await dbGet('items', id); } catch(e) { console.error(e); toast('Could not read item','error'); return; }
+  if (!i) return;
+  const stockNum = Number(i.stock), minNum = Number(i.minStock) || 0;
+  const stockBadge = stockNum <= minNum
+    ? `<span class="view-item-badge badge-low"><i class="fas fa-triangle-exclamation"></i> Low Stock</span>`
+    : `<span class="view-item-badge badge-ok"><i class="fas fa-check-circle"></i> In Stock</span>`;
+  const margin = i.costPrice > 0 ? Math.round(((i.sellPrice - i.costPrice) / i.costPrice) * 100) : 0;
+  const rows = [
+    { label:'Item Name',     value: esc(i.itemName) },
+    { label:'Category',      value: esc(i.category) || '—' },
+    { label:'Cost Price',    value: 'KSH ' + Number(i.costPrice).toLocaleString() },
+    { label:'Sell Price',    value: 'KSH ' + Number(i.sellPrice).toLocaleString() },
+    { label:'Profit Margin', value: margin + '%' },
+    { label:'Stock Qty',     value: stockNum + ' units &nbsp;' + stockBadge },
+    { label:'Min Stock',     value: minNum + ' units' },
+    { label:'Date Added',    value: fmtDate(i.date) || '—' }
+  ];
+  $('#viewItemBody').html(rows.map(r => `<div class="view-item-row"><span class="view-item-label">${r.label}</span><span class="view-item-value">${r.value}</span></div>`).join(''));
+  $('#viewItemModal').show();
+}
+</script>
+</body>
+</html>
